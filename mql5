@@ -1,0 +1,78 @@
+
+// Power Trade Indicator MT4
+// Developer's Site: forexroboteasy.com
+// Development: Forex Robot Easy Team
+
+#property strict
+
+// Input parameters
+extern int period = 14; // Period for calculating the indicator
+extern int threshold = 30; // Threshold for entry signals
+extern double profitTarget = 0.005; // Profit target for taking profits
+extern double reboundZone = 0.002; // Rebound zone for establishing stop loss
+
+// Global variables
+double[] powerTradeBuffer; // Buffer to store indicator values
+
+// Initialization function
+int OnInit()
+{
+    // Indicator setup
+    SetIndexStyle(0, DRAW_LINE);
+    SetIndexBuffer(0, powerTradeBuffer);
+    
+    // Calculation of indicator values
+    int startIndex = Bars - IndicatorCounted();
+    int endIndex = Bars - 1;
+    for (int i = startIndex; i <= endIndex; i++)
+    {
+        powerTradeBuffer[i] = calculatePowerTrade(i);
+    }
+    
+    return(INIT_SUCCEEDED);
+}
+
+// Deinitialization function
+void OnDeinit(const int reason)
+{
+    // Clean up
+    ArrayFree(powerTradeBuffer);
+}
+
+// Calculation function
+double calculatePowerTrade(const int index)
+{
+    double sum = 0;
+    for (int i = index; i >= index - period + 1; i--)
+    {
+        sum += Close[i];
+    }
+    return sum / period;
+}
+
+// Trading function
+void OnTick()
+{
+    // Check for entry signal
+    if (powerTradeBuffer[Bars - 1] > threshold)
+    {
+        // Calculate stop loss and take profit levels
+        double stopLoss = NormalizeDouble(Bid - reboundZone, Digits);
+        double takeProfit = NormalizeDouble(Bid + profitTarget, Digits);
+        
+        // Place a buy order
+        int ticket = OrderSend(Symbol(), OP_BUY, 1, Ask, 0, stopLoss, takeProfit, 'Buy', 0, 0, Green);
+        
+        // Check for order placement success
+        if (ticket > 0)
+        {
+            // Order placed successfully
+            Print('Buy order placed: ', OrderTicket());
+        }
+        else
+        {
+            // Order placement failed
+            Print('Buy order failed: ', GetLastError());
+        }
+    }
+}
